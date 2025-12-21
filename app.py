@@ -12,7 +12,7 @@ from models import initialize_gemini_model, create_analysis_prompt, perform_pric
 from charts import display_financial_charts, display_prediction_chart
 from advanced_charts import display_all_charts
 from web_search import search_financial_news, extract_key_info
-from ollama_models import check_ollama_connection, list_ollama_models, analyze_financial_data_with_ollama
+from ollama_models import check_ollama_connection, list_ollama_models, analyze_financial_data_with_ollama, check_ollama_cloud_connection, list_ollama_cloud_models, OLLAMA_CLOUD_MODELS
 from embeddings import find_similar_texts, embed_financial_data
 
 st.set_page_config(
@@ -271,14 +271,32 @@ if 'df' in st.session_state:
                     st.warning(f"⚠ Pattern analysis unavailable")
             
             st.markdown("---")
-            st.markdown("### 🖥 Offline AI Analysis")
+            st.markdown("### 🖥 AI Analysis (Ollama)")
             
-            if check_ollama_connection():
-                st.success("✓ Ollama Connected")
+            # Check for local Ollama first, then cloud
+            local_connected = check_ollama_connection()
+            cloud_connected = check_ollama_cloud_connection()
+            
+            if local_connected or cloud_connected:
+                if local_connected:
+                    st.success("✓ Ollama Local Connected")
+                    models = list_ollama_models()
+                else:
+                    st.success("✓ Ollama Cloud Connected")
+                    models = list_ollama_cloud_models()
                 
-                models = list_ollama_models()
                 if models:
-                    selected_model = st.selectbox("🤖 Model", models, index=0)
+                    # Add cloud models to the list if cloud is connected
+                    if cloud_connected:
+                        cloud_models = [f"[Cloud] {model}" for model in OLLAMA_CLOUD_MODELS if model]
+                        models.extend(cloud_models)
+                    
+                    selected_model_display = st.selectbox("🤖 Model", models, index=0)
+                    
+                    # Determine if we're using cloud mode
+                    use_cloud = selected_model_display.startswith("[Cloud] ")
+                    selected_model = selected_model_display.replace("[Cloud] ", "") if use_cloud else selected_model_display
+                    
                     ollama_query = st.text_input(
                         "💬 Query",
                         "What are the key trends?"
@@ -291,7 +309,7 @@ if 'df' in st.session_state:
                             with col_m:
                                 with st.spinner("⏳ Processing..."):
                                     ollama_response = analyze_financial_data_with_ollama(
-                                        df, ollama_query, selected_model
+                                        df, ollama_query, selected_model, use_cloud=use_cloud
                                     )
                                     if ollama_response:
                                         st.markdown("### 🤖 Ollama Analysis")
@@ -302,9 +320,9 @@ if 'df' in st.session_state:
                         else:
                             st.warning("⚠ Please enter a query first")
                 else:
-                    st.warning("⚠ No Ollama models found. Please pull a model first.")
+                    st.warning("⚠ No Ollama models found.")
             else:
-                st.warning("✗ Ollama not running. Please start Ollama service.")
+                st.warning("✗ Ollama not running. Please start Ollama service or check cloud credentials.")
                 st.info("💡 Install Ollama from: https://ollama.ai")
 
 else:

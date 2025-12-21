@@ -12,12 +12,17 @@ load_dotenv()
 def search_serper(query):
     """Search using Serper API"""
     try:
+        api_key = os.getenv('SERPER_API_KEY')
+        if not api_key:
+            st.warning("Serper API key not found")
+            return None
+            
         conn = http.client.HTTPSConnection("google.serper.dev")
         payload = json.dumps({
             "q": query
         })
         headers = {
-            'X-API-KEY': os.getenv('SERPER_API_KEY'),
+            'X-API-KEY': api_key,
             'Content-Type': 'application/json'
         }
         conn.request("POST", "/search", payload, headers)
@@ -45,7 +50,12 @@ def search_searchapi(query):
 def search_exa(query):
     """Search using Exa API"""
     try:
-        exa = Exa(os.getenv('EXA_API_KEY'))
+        api_key = os.getenv('EXA_API_KEY')
+        if not api_key:
+            st.warning("Exa API key not found")
+            return None
+        
+        exa = Exa(api_key)
         result = exa.search_and_contents(
             query,
             type="auto",
@@ -54,6 +64,39 @@ def search_exa(query):
         return result
     except Exception as e:
         st.error(f"Exa search error: {str(e)}")
+        return None
+
+def search_openrouter(query):
+    """Search using OpenRouter API"""
+    try:
+        api_key = os.getenv('OPENROUTER_API_KEY')
+        model = os.getenv('OPENROUTER_MODEL', 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free')
+        
+        if not api_key:
+            st.warning("OpenRouter API key not found")
+            return None
+        
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "user", "content": f"Provide a list of recent financial news articles about {query}. Include titles, brief summaries, and URLs if available."}
+            ]
+        }
+        
+        response = requests.post(url, headers=headers, json=payload)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.error(f"OpenRouter API error: {response.status_code} - {response.text}")
+            return None
+    except Exception as e:
+        st.error(f"OpenRouter search error: {str(e)}")
         return None
 
 def search_financial_news(company_name):
@@ -67,6 +110,11 @@ def search_financial_news(company_name):
     
     # Fallback to Serper
     result = search_serper(query)
+    if result:
+        return result
+    
+    # Fallback to OpenRouter
+    result = search_openrouter(query)
     if result:
         return result
     

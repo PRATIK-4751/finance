@@ -8,8 +8,9 @@ FinGPT Analyst is a comprehensive financial analysis platform that combines real
 - Interactive financial charts and technical indicators
 - AI-powered analysis using Google Gemini
 - Price prediction using machine learning
-- Financial news aggregation
-- Local AI analysis with Ollama integration
+- Financial news aggregation with multiple fallback sources
+- Local and Cloud AI analysis with Ollama integration
+- Alternative AI models via OpenRouter
 
 ## Prerequisites
 
@@ -41,6 +42,11 @@ Create a `.env` file in the project root with the following variables:
 GOOGLE_API_KEY=your_google_api_key_here
 SERPER_API_KEY=your_serper_api_key_here  # Optional
 EXA_API_KEY=your_exa_api_key_here        # Optional
+OPENROUTER_API_KEY=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
+OPENROUTER_MODEL=cognitivecomputations/dolphin-mistral-24b-venice-edition:free
+OLLAMA_CLOUD_API_KEY=c19ccb9b777445bab37c141adbe77a23.7Jpa8Fun4MfB9AqNfeawnMgy
+OLLAMA_CLOUD_BASE_URL=https://ollama.com
+OLLAMA_CLOUD_MODELS=gpt-oss:120b-cloud,gpt-oss:20b-cloud,deepseek-v3.1:671b-cloud,qwen3-coder:480b-cloud
 ```
 
 ## Running the Application
@@ -72,16 +78,30 @@ To use all features of the application, you'll need to obtain API keys:
    - Visit [Exa.ai](https://exa.ai/)
    - Sign up and get an API key
 
+4. **OpenRouter API Key**: Alternative AI models
+   - Included by default in the .env.example file
+   - Visit [OpenRouter](https://openrouter.ai/) for more information
+
+5. **Ollama Cloud API Key**: Cloud-based Ollama models
+   - Included by default in the .env.example file
+   - Visit [Ollama](https://ollama.com/) for more information
+
 ## Ollama Integration (Optional)
 
-To use local AI models:
+To use AI models locally or via cloud:
 
+### Local Mode:
 1. Install [Ollama](https://ollama.ai/)
 2. Pull a model (e.g., qwen2.5-coder):
    ```bash
    ollama pull qwen2.5-coder:7b
    ```
 3. Start the Ollama service
+
+### Cloud Mode:
+1. The Ollama Cloud API key is already included in the .env.example file
+2. Select a cloud model from the dropdown in the application UI
+3. No local installation required
 
 ## Usage
 
@@ -108,6 +128,10 @@ All required packages are listed in `requirements.txt`:
 - python-dotenv
 - exa-py
 - nest-asyncio
+- seaborn
+- matplotlib
+- plotly
+- sentence-transformers
 
 ## License
 
