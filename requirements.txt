@@ -9,3 +9,6 @@ requests>=2.31.0
 python-dotenv>=1.0.0
 exa-py>=1.0.0
 nest-asyncio>=1.5.0
+seaborn>=0.12.0
+matplotlib>=3.5.0
+plotly>=5.0.0
