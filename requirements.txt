@@ -12,3 +12,4 @@ nest-asyncio>=1.5.0
 seaborn>=0.12.0
 matplotlib>=3.5.0
 plotly>=5.0.0
+sentence-transformers>=2.2.0
