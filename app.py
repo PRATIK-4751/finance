@@ -12,7 +12,7 @@ from models import initialize_gemini_model, create_analysis_prompt, perform_pric
 from charts import display_financial_charts, display_prediction_chart
 from advanced_charts import display_all_charts
 from web_search import search_financial_news, extract_key_info
-from ollama_models import check_ollama_connection, list_ollama_models, analyze_financial_data_with_ollama, check_ollama_cloud_connection, list_ollama_cloud_models, OLLAMA_CLOUD_MODELS
+from ollama_models import check_ollama_connection, list_ollama_models, analyze_financial_data_with_ollama
 from embeddings import find_similar_texts, embed_financial_data
 
 st.set_page_config(
@@ -100,7 +100,7 @@ if 'df' in st.session_state:
     df = validate_and_clean_data(df)
     
     if df is None or len(df) == 0:
-        st.error("Invalid or empty data. Please try a different ticker or date range.")
+        st.error("❌ Invalid or empty data. Please try a different ticker or date range.")
         st.stop()
     
     if len(df) < 2:
@@ -117,7 +117,7 @@ if 'df' in st.session_state:
         latest_price = df['Close'].iloc[-1]
         if isinstance(latest_price, pd.Series):
             latest_price = latest_price.values[0]
-        st.metric("Current Price", f"${float(latest_price):.2f}")
+        st.metric("💵 Current Price", f"${float(latest_price):.2f}")
     
     with col2:
         current_close = df['Close'].iloc[-1]
@@ -128,7 +128,7 @@ if 'df' in st.session_state:
             prev_close = prev_close.values[0]
         price_change = float(current_close) - float(prev_close)
         pct_change = (price_change / float(prev_close)) * 100
-        st.metric("Daily Change", f"${price_change:.2f}", f"{pct_change:.2f}%")
+        st.metric("📈 Daily Change", f"${price_change:.2f}", f"{pct_change:.2f}%")
     
     with col3:
         avg_volume = df['Volume'].mean()
@@ -140,14 +140,14 @@ if 'df' in st.session_state:
         high_52w = df['High'].tail(252).max()
         if isinstance(high_52w, pd.Series):
             high_52w = high_52w.values[0]
-        st.metric(" 52-Week High", f"${float(high_52w):.2f}")
+        st.metric("🎯 52-Week High", f"${float(high_52w):.2f}")
     
     st.markdown("---")
     
     tab_viz, tab_adv_viz, tab_ai, tab_ml, tab_news = st.tabs([
         "📊 Basic Charts",
         "📈 Advanced Analytics",
-        ":)  AI Analyst",
+        "🤖 AI Analyst",
         "🔮 Price Prediction",
         "📰 News & Insights"
     ])
@@ -185,7 +185,7 @@ if 'df' in st.session_state:
             prompt = create_analysis_prompt()
             chain = prompt | llm
             
-            user_query = st.text_area("▶ Enter your question:", placeholder="What are the key trends in this data?", height=100)
+            user_query = st.text_area("💬 Enter your question:", placeholder="What are the key trends in this data?", height=100)
             
             if st.button("▶ Run Analysis", use_container_width=True, key="ai_analyst_button"):
                 if user_query:
@@ -225,35 +225,36 @@ if 'df' in st.session_state:
             prediction = perform_price_prediction(df)
             display_prediction_chart(df, prediction)
         except Exception as e:
-            st.error(f" Prediction error: {str(e)}")
+            st.error(f"❌ Prediction error: {str(e)}")
     
     with tab_news:
-        col_news, col_analysis = st.columns([2, 1])
+        st.markdown(f"### 📰 Latest Financial News: {current_ticker}")
         
-        with col_news:
-            st.markdown(f"### 📰 Latest Financial News: {current_ticker}")
+        try:
+            with st.spinner("🔍 Fetching news..."):
+                search_results = search_financial_news(current_ticker)
             
-            try:
-                with st.spinner("▶ Fetching news..."):
-                    search_results = search_financial_news(current_ticker)
+            if search_results:
+                key_info = extract_key_info(search_results)
                 
-                if search_results:
-                    key_info = extract_key_info(search_results)
-                    
-                    if key_info:
-                        for i, article in enumerate(key_info):
-                            with st.expander(f"📄 [{i+1}] {article['title']}", expanded=i==0):
-                                st.markdown(f"**🔗 Source:** {article['url']}")
-                                st.markdown(article['snippet'])
-                    else:
-                        st.info("ℹ No news articles found.")
+                if key_info:
+                    for i, article in enumerate(key_info):
+                        with st.expander(f"📄 [{i+1}] {article['title']}", expanded=i==0):
+                            st.markdown(f"**🔗 Source:** {article['url']}")
+                            st.markdown(article['snippet'])
                 else:
-                    st.info("ℹ No recent news available.")
-            except Exception as e:
-                st.error(f"❌ News fetch error: {str(e)}")
+                    st.info("ℹ No news articles found.")
+            else:
+                st.info("ℹ No recent news available.")
+        except Exception as e:
+            st.error(f"❌ News fetch error: {str(e)}")
         
-        with col_analysis:
-            st.markdown("### Historical Patterns")
+        st.markdown("---")
+        
+        col_left_space, col_patterns, col_right_space = st.columns([1, 2, 1])
+        
+        with col_patterns:
+            st.markdown("### 🔍 Historical Patterns")
             
             if len(df) > 5:
                 try:
@@ -269,60 +270,44 @@ if 'df' in st.session_state:
                             st.caption(f"Similarity: {similarity:.1%}")
                 except Exception as e:
                     st.warning(f"⚠ Pattern analysis unavailable")
+        
+        st.markdown("---")
+        
+        col_l, col_ollama, col_r = st.columns([1, 2, 1])
+        
+        with col_ollama:
+            st.markdown("### 🖥 Offline AI Analysis")
             
-            st.markdown("---")
-            st.markdown("### 🖥 AI Analysis (Ollama)")
-            
-            # Check for local Ollama first, then cloud
-            local_connected = check_ollama_connection()
-            cloud_connected = check_ollama_cloud_connection()
-            
-            if local_connected or cloud_connected:
-                if local_connected:
-                    st.success("✓ Ollama Local Connected")
-                    models = list_ollama_models()
-                else:
-                    st.success("✓ Ollama Cloud Connected")
-                    models = list_ollama_cloud_models()
+            if check_ollama_connection():
+                st.success("✓ Ollama Connected")
                 
+                models = list_ollama_models()
                 if models:
-                    # Add cloud models to the list if cloud is connected
-                    if cloud_connected:
-                        cloud_models = [f"[Cloud] {model}" for model in OLLAMA_CLOUD_MODELS if model]
-                        models.extend(cloud_models)
-                    
-                    selected_model_display = st.selectbox("🤖 Model", models, index=0)
-                    
-                    # Determine if we're using cloud mode
-                    use_cloud = selected_model_display.startswith("[Cloud] ")
-                    selected_model = selected_model_display.replace("[Cloud] ", "") if use_cloud else selected_model_display
-                    
-                    ollama_query = st.text_input(
+                    selected_model = st.selectbox("🤖 Model", models, index=0)
+                    ollama_query = st.text_area(
                         "💬 Query",
-                        "What are the key trends?"
+                        "What are the key trends?",
+                        height=100
                     )
                     
                     if st.button("▶ Run Analysis", use_container_width=True, key="ollama_analysis_button"):
                         if ollama_query:
-                            col_l, col_m, col_r = st.columns([1, 3, 1])
-                            
-                            with col_m:
-                                with st.spinner("⏳ Processing..."):
-                                    ollama_response = analyze_financial_data_with_ollama(
-                                        df, ollama_query, selected_model, use_cloud=use_cloud
-                                    )
-                                    if ollama_response:
-                                        st.markdown("### 🤖 Ollama Analysis")
-                                        st.markdown("---")
-                                        st.write(ollama_response)
-                                    else:
-                                        st.error("❌ Failed to get response")
+                            with st.spinner("⏳ Processing..."):
+                                ollama_response = analyze_financial_data_with_ollama(
+                                    df, ollama_query, selected_model
+                                )
+                                if ollama_response:
+                                    st.markdown("### 🤖 Ollama Analysis Results")
+                                    st.markdown("---")
+                                    st.write(ollama_response)
+                                else:
+                                    st.error("❌ Failed to get response")
                         else:
                             st.warning("⚠ Please enter a query first")
                 else:
-                    st.warning("⚠ No Ollama models found.")
+                    st.warning("⚠ No Ollama models found. Please pull a model first.")
             else:
-                st.warning("✗ Ollama not running. Please start Ollama service or check cloud credentials.")
+                st.warning("✗ Ollama not running. Please start Ollama service.")
                 st.info("💡 Install Ollama from: https://ollama.ai")
 
 else:
