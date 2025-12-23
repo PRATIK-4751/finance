@@ -12,7 +12,7 @@ from models import initialize_gemini_model, create_analysis_prompt, perform_pric
 from charts import display_financial_charts, display_prediction_chart
 from advanced_charts import display_all_charts
 from web_search import search_financial_news, extract_key_info
-from ollama_models import check_ollama_connection, list_ollama_models, analyze_financial_data_with_ollama
+from ollama_models import check_ollama_connection, check_ollama_cloud_connection, list_ollama_models, list_ollama_cloud_models, analyze_financial_data_with_ollama
 from embeddings import find_similar_texts, embed_financial_data
 
 st.set_page_config(
@@ -276,39 +276,62 @@ if 'df' in st.session_state:
         col_l, col_ollama, col_r = st.columns([1, 2, 1])
         
         with col_ollama:
-            st.markdown("### 🖥 Offline AI Analysis")
+            st.markdown("### 🖥 Offline AI Analysis (Ollama)")
             
-            if check_ollama_connection():
-                st.success("✓ Ollama Connected")
+            # Check both local and cloud connections
+            local_available = check_ollama_connection()
+            cloud_available = check_ollama_cloud_connection()
+            
+            if local_available or cloud_available:
+                # Show connection status
+                if local_available:
+                    st.success("✓ Local Ollama Connected")
+                if cloud_available:
+                    st.success("✓ Ollama Cloud Connected")
                 
-                models = list_ollama_models()
+                # Let user choose between local and cloud
+                use_cloud = False
+                if cloud_available:
+                    if local_available:
+                        use_cloud = st.checkbox("Use Ollama Cloud (instead of local)", value=True)
+                    else:
+                        use_cloud = True
+                        st.info("ℹ Using Ollama Cloud (local not available)")
+                
+                # Get available models
+                if use_cloud:
+                    models = list_ollama_cloud_models()
+                else:
+                    models = list_ollama_models()
+                
                 if models:
                     selected_model = st.selectbox("🤖 Model", models, index=0)
                     ollama_query = st.text_area(
                         "💬 Query",
-                        "What are the key trends?",
-                        height=100
+                        "What are the key trends and insights from this data?",
+                        height=100,
+                        key="ollama_query_textarea"
                     )
                     
                     if st.button("▶ Run Analysis", use_container_width=True, key="ollama_analysis_button"):
                         if ollama_query:
-                            with st.spinner("⏳ Processing..."):
+                            with st.spinner("⏳ Processing with Ollama..."):
                                 ollama_response = analyze_financial_data_with_ollama(
-                                    df, ollama_query, selected_model
+                                    df, ollama_query, selected_model, use_cloud=use_cloud
                                 )
                                 if ollama_response:
                                     st.markdown("### 🤖 Ollama Analysis Results")
                                     st.markdown("---")
                                     st.write(ollama_response)
                                 else:
-                                    st.error("❌ Failed to get response")
+                                    st.error("❌ Failed to get response from Ollama")
                         else:
                             st.warning("⚠ Please enter a query first")
                 else:
                     st.warning("⚠ No Ollama models found. Please pull a model first.")
             else:
-                st.warning("✗ Ollama not running. Please start Ollama service.")
-                st.info("💡 Install Ollama from: https://ollama.ai")
+                st.warning("❌ Ollama not available")
+                st.info("💡 Options:\n1. Install local Ollama from: https://ollama.ai\n2. Use Ollama Cloud (already configured)")
 
 else:
     st.markdown("---")
